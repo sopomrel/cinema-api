@@ -9,12 +9,14 @@ import com.cinema.mapper.ActorMapper;
 import com.cinema.repository.ActorRepository;
 import com.cinema.service.ActorService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -25,7 +27,7 @@ public class ActorServiceImpl implements ActorService {
     @Override
     public ActorResponse createActor(ActorRequest request) {
         if (actorRepository.existsByEmail(request.getEmail())) {
-            throw new DuplicateResourceException("Actor with email already exists: " + request.getEmail());
+            throw new DuplicateResourceException("error.actor.duplicateEmail", request.getEmail());
         }
 
         Actor actor = Actor.builder()
@@ -35,7 +37,9 @@ public class ActorServiceImpl implements ActorService {
                 .nationality(request.getNationality())
                 .build();
 
-        return ActorMapper.toResponse(actorRepository.save(actor));
+        Actor saved = actorRepository.save(actor);
+        log.info("Actor created: id={}, name={} {}", saved.getId(), saved.getFirstName(), saved.getLastName());
+        return ActorMapper.toResponse(saved);
     }
 
     @Override
@@ -51,17 +55,17 @@ public class ActorServiceImpl implements ActorService {
     @Transactional(readOnly = true)
     public ActorResponse getActorById(Long id) {
         Actor actor = actorRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Actor not found with ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("error.actor.notFound", id));
         return ActorMapper.toResponse(actor);
     }
 
     @Override
     public ActorResponse updateActor(Long id, ActorRequest request) {
         Actor actor = actorRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Actor not found with ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("error.actor.notFound", id));
 
         if (actorRepository.existsByEmailAndIdNot(request.getEmail(), id)) {
-            throw new DuplicateResourceException("Actor with email already exists: " + request.getEmail());
+            throw new DuplicateResourceException("error.actor.duplicateEmail", request.getEmail());
         }
 
         actor.setFirstName(request.getFirstName());
@@ -75,8 +79,9 @@ public class ActorServiceImpl implements ActorService {
     @Override
     public void deleteActor(Long id) {
         if (!actorRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Actor not found with ID: " + id);
+            throw new ResourceNotFoundException("error.actor.notFound", id);
         }
         actorRepository.deleteById(id);
+        log.info("Actor deleted: id={}", id);
     }
 }

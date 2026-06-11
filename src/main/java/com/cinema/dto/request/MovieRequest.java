@@ -11,8 +11,8 @@ import java.util.List;
 @Builder
 public class MovieRequest {
 
-    @NotNull(message = "Title cannot be null")
-    @Size(min = 1, max = 150, message = "Title must be between 1 and 150 characters")
+    @NotNull(message = "{validation.title.required}")
+    @Size(min = 1, max = 150, message = "{validation.title.size}")
     private String title;
 
     @NotNull(message = "Release year cannot be null")

@@ -12,18 +12,18 @@ import lombok.*;
 @Builder
 public class ActorRequest {
 
-    @NotNull(message = "First name cannot be null")
-    @Size(min = 2, max = 50, message = "First name must be between 2 and 50 characters")
+    @NotNull(message = "{validation.firstName.required}")
+    @Size(min = 2, max = 50, message = "{validation.firstName.size}")
     private String firstName;
 
-    @NotNull(message = "Last name cannot be null")
-    @Size(min = 2, max = 50, message = "Last name must be between 2 and 50 characters")
+    @NotNull(message = "{validation.lastName.required}")
+    @Size(min = 2, max = 50, message = "{validation.firstName.size}")
     private String lastName;
 
-    @NotNull(message = "Email cannot be null")
-    @Email(message = "Email must be valid")
+    @NotNull(message = "{validation.email.required}")
+    @Email(message = "{validation.email.invalid}")
     private String email;
 
-    @Size(max = 50, message = "Nationality cannot exceed 50 characters")
+    @Size(max = 50, message = "{validation.firstName.size}")
     private String nationality;
 }

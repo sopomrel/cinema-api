@@ -9,6 +9,7 @@ import com.cinema.mapper.DirectorMapper;
 import com.cinema.repository.DirectorRepository;
 import com.cinema.service.DirectorService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -27,7 +29,7 @@ public class DirectorServiceImpl implements DirectorService {
     @PreAuthorize("hasRole('ADMIN')")
     public DirectorResponse createDirector(DirectorRequest request) {
         if (directorRepository.existsByEmail(request.getEmail())) {
-            throw new DuplicateResourceException("Director with email already exists: " + request.getEmail());
+            throw new DuplicateResourceException("error.director.duplicateEmail", request.getEmail());
         }
 
         Director director = Director.builder()
@@ -37,7 +39,9 @@ public class DirectorServiceImpl implements DirectorService {
                 .nationality(request.getNationality())
                 .build();
 
-        return DirectorMapper.toResponse(directorRepository.save(director));
+        Director saved = directorRepository.save(director);
+        log.info("Director created: id={}, name={} {}", saved.getId(), saved.getFirstName(), saved.getLastName());
+        return DirectorMapper.toResponse(saved);
     }
 
     @Override
@@ -53,7 +57,7 @@ public class DirectorServiceImpl implements DirectorService {
     @Transactional(readOnly = true)
     public DirectorResponse getDirectorById(Long id) {
         Director director = directorRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Director not found with ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("error.director.notFound", id));
         return DirectorMapper.toResponse(director);
     }
 
@@ -61,10 +65,10 @@ public class DirectorServiceImpl implements DirectorService {
     @PreAuthorize("hasRole('ADMIN')")
     public DirectorResponse updateDirector(Long id, DirectorRequest request) {
         Director director = directorRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Director not found with ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("error.director.notFound", id));
 
         if (directorRepository.existsByEmailAndIdNot(request.getEmail(), id)) {
-            throw new DuplicateResourceException("Director with email already exists: " + request.getEmail());
+            throw new DuplicateResourceException("error.director.duplicateEmail", request.getEmail());
         }
 
         director.setFirstName(request.getFirstName());
@@ -79,8 +83,9 @@ public class DirectorServiceImpl implements DirectorService {
     @PreAuthorize("hasRole('ADMIN')")
     public void deleteDirector(Long id) {
         if (!directorRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Director not found with ID: " + id);
+            throw new ResourceNotFoundException("error.director.notFound", id);
         }
         directorRepository.deleteById(id);
+        log.info("Director deleted: id={}", id);
     }
 }

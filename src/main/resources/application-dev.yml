@@ -1,0 +1,27 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:cinemadb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+app:
+  settings:
+    title: Cinema API (Development)
+    contact-email: dev-cinema@example.com
+    pagination-limit: 20
+    external-service-url: https://api.themoviedb.org/3
+    catalog-public-enabled: true
+
+logging:
+  level:
+    root: INFO
+    com.cinema: DEBUG

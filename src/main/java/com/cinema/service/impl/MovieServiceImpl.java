@@ -1,5 +1,6 @@
 package com.cinema.service.impl;
 
+import com.cinema.config.AppSettings;
 import com.cinema.dto.request.MovieRequest;
 import com.cinema.dto.response.ActorResponse;
 import com.cinema.dto.response.MovieResponse;
@@ -13,6 +14,7 @@ import com.cinema.repository.DirectorRepository;
 import com.cinema.repository.MovieRepository;
 import com.cinema.service.MovieService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -29,12 +32,13 @@ public class MovieServiceImpl implements MovieService {
     private final MovieRepository movieRepository;
     private final DirectorRepository directorRepository;
     private final ActorRepository actorRepository;
+    private final AppSettings appSettings;
 
     @Override
     @PreAuthorize("isAuthenticated()")
     public MovieResponse createMovie(MovieRequest request) {
         Director director = directorRepository.findById(request.getDirectorId())
-                .orElseThrow(() -> new ResourceNotFoundException("Director not found with ID: " + request.getDirectorId()));
+                .orElseThrow(() -> new ResourceNotFoundException("error.director.notFound", request.getDirectorId()));
 
         List<Actor> actors = resolveActors(request.getActorIds());
 
@@ -47,14 +51,19 @@ public class MovieServiceImpl implements MovieService {
                 .actors(actors)
                 .build();
 
-        return mapToResponse(movieRepository.save(movie));
+        Movie saved = movieRepository.save(movie);
+        log.info("Movie created: id={}, title={}", saved.getId(), saved.getTitle());
+        return mapToResponse(saved);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<MovieResponse> getAllMovies() {
+        int limit = appSettings.getPaginationLimit();
+        log.debug("Fetching movies with pagination limit {}", limit);
         return movieRepository.findAll()
                 .stream()
+                .limit(limit)
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
@@ -63,7 +72,7 @@ public class MovieServiceImpl implements MovieService {
     @Transactional(readOnly = true)
     public MovieResponse getMovieById(Long id) {
         Movie movie = movieRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Movie not found with ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("error.movie.notFound", id));
         return mapToResponse(movie);
     }
 
@@ -71,7 +80,7 @@ public class MovieServiceImpl implements MovieService {
     @Transactional(readOnly = true)
     public List<MovieResponse> getMoviesByDirector(Long directorId) {
         if (!directorRepository.existsById(directorId)) {
-            throw new ResourceNotFoundException("Director not found with ID: " + directorId);
+            throw new ResourceNotFoundException("error.director.notFound", directorId);
         }
         return movieRepository.findByDirectorId(directorId)
                 .stream()
@@ -92,10 +101,10 @@ public class MovieServiceImpl implements MovieService {
     @PreAuthorize("isAuthenticated()")
     public MovieResponse updateMovie(Long id, MovieRequest request) {
         Movie movie = movieRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Movie not found with ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("error.movie.notFound", id));
 
         Director director = directorRepository.findById(request.getDirectorId())
-                .orElseThrow(() -> new ResourceNotFoundException("Director not found with ID: " + request.getDirectorId()));
+                .orElseThrow(() -> new ResourceNotFoundException("error.director.notFound", request.getDirectorId()));
 
         movie.setTitle(request.getTitle());
         movie.setReleaseYear(request.getReleaseYear());
@@ -111,9 +120,10 @@ public class MovieServiceImpl implements MovieService {
     @PreAuthorize("hasRole('ADMIN')")
     public void deleteMovie(Long id) {
         if (!movieRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Movie not found with ID: " + id);
+            throw new ResourceNotFoundException("error.movie.notFound", id);
         }
         movieRepository.deleteById(id);
+        log.info("Movie deleted: id={}", id);
     }
 
     private List<Actor> resolveActors(List<Long> actorIds) {
@@ -122,7 +132,7 @@ public class MovieServiceImpl implements MovieService {
         }
         return actorIds.stream()
                 .map(actorId -> actorRepository.findById(actorId)
-                        .orElseThrow(() -> new ResourceNotFoundException("Actor not found with ID: " + actorId)))
+                        .orElseThrow(() -> new ResourceNotFoundException("error.actor.notFound", actorId)))
                 .collect(Collectors.toList());
     }
 

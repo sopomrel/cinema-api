@@ -1,0 +1,11 @@
+spring:
+  profiles:
+    active: dev
+
+app:
+  settings:
+    title: Cinema API (Test)
+    contact-email: test-cinema@example.com
+    pagination-limit: 20
+    external-service-url: https://api.themoviedb.org/3
+    catalog-public-enabled: true

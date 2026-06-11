@@ -1,16 +1,123 @@
-# Cinema API — Spring Boot Midterm + Security Assignment
+# Cinema API — Spring Boot Midterm + Security + Advanced Config
 
-REST API for managing movies, actors, and directors, secured with Spring Security.
+REST API for managing movies, actors, and directors, secured with Spring Security, externalized configuration, i18n, and structured logging.
 
 ## Run the application
+
+### Development profile (default)
 
 ```bash
 mvn spring-boot:run
 ```
 
-- API root: `http://localhost:8080/` — welcome JSON with useful links
+Or explicitly:
+
+```bash
+mvn spring-boot:run -Dspring-boot.run.profiles=dev
+```
+
+**IntelliJ IDEA:** Run `CinemaApplication` → Edit Configurations → Active profiles: `dev`
+
+### Production profile
+
+Requires a running PostgreSQL instance. Set environment variables as needed:
+
+```bash
+set DB_HOST=localhost
+set DB_PORT=5432
+set DB_NAME=cinemadb
+set DB_USERNAME=cinema_user
+set DB_PASSWORD=cinema_pass
+mvn spring-boot:run -Dspring-boot.run.profiles=prod
+```
+
+**IntelliJ IDEA:** Active profiles: `prod`
+
+| Profile | Database | DDL | H2 Console | Sample data | Log level (`com.cinema`) |
+|---------|----------|-----|------------|-------------|--------------------------|
+| `dev` | H2 in-memory | `create-drop` | Enabled | Seeded automatically | `DEBUG` |
+| `prod` | PostgreSQL | `validate` | Disabled | None | `WARN` |
+
+- API root: `http://localhost:8080/` — welcome JSON with metadata and links
 - Swagger UI: `http://localhost:8080/swagger-ui.html`
-- H2 console: `http://localhost:8080/h2-console` (JDBC URL: `jdbc:h2:mem:cinemadb`, user: `sa`, no password)
+- H2 console (dev only): `http://localhost:8080/h2-console` (JDBC URL: `jdbc:h2:mem:cinemadb`, user: `sa`, no password)
+
+---
+
+## Custom configuration properties (`app.settings`)
+
+Defined in `AppSettings.java` (`@ConfigurationProperties` + `@Validated`):
+
+| Property | Role |
+|----------|------|
+| `app.settings.title` | Application title shown in `GET /` metadata |
+| `app.settings.contact-email` | Support contact email in metadata (validated with `@Email`) |
+| `app.settings.pagination-limit` | Max movies returned by `GET /api/movies` (1–100) |
+| `app.settings.external-service-url` | External movie DB API URL in metadata |
+| `app.settings.catalog-public-enabled` | Feature flag: when `true` (dev), `GET /api/movies|actors|directors` are public; when `false` (prod), they require authentication |
+
+Injected into `HomeController` (metadata), `MovieServiceImpl` (pagination limit), and `SecurityConfig` (catalog access rules).
+
+Profile overrides: `application-dev.yml` and `application-prod.yml`.
+
+---
+
+## Internationalization (i18n)
+
+**Resource bundles:** `messages.properties` (default/fallback), `messages_en.properties` (English), `messages_ka.properties` (Georgian), UTF-8 encoded.
+
+**Locale resolution:** `AcceptHeaderLocaleResolver` reads the `Accept-Language` header (`en` or `ka`).
+
+### Localized endpoints and messages
+
+| Area | Details |
+|------|---------|
+| `GET /` | Welcome message and status (`app.welcome`, `app.status.running`) |
+| `POST /api/auth/login` | Success/failure messages (`auth.login.success`, `auth.login.failure`) |
+| `GlobalExceptionHandler` | 404, 409, 400 validation summary, 500, access denied |
+| `SecurityConfig` | Localized access-denied response (`error.access.denied`) |
+| Validation DTOs | `ActorRequest`, `DirectorRequest`, `MovieRequest` use `{validation.*}` message keys (`ValidationConfig` wires `MessageSource` to Bean Validation) |
+
+### Test i18n
+
+```http
+GET http://localhost:8080/
+Accept-Language: en
+```
+
+```http
+GET http://localhost:8080/api/movies/999
+Accept-Language: ka
+```
+
+```http
+POST http://localhost:8080/api/actors
+Accept-Language: en
+Content-Type: application/json
+
+{"firstName": "A", "lastName": "B", "email": "bad"}
+```
+
+English returns `"First name must be between 2 and 50 characters"`; Georgian returns the equivalent in `messages.properties`.
+
+---
+
+## Logging
+
+**Framework:** SLF4J via Lombok `@Slf4j` in `HomeController`, `AuthController`, `MovieServiceImpl`, `ActorServiceImpl`, `DirectorServiceImpl`, `GlobalExceptionHandler`, `UserDataInitializer`, `DevDataInitializer`, `CustomUserDetailsService`.
+
+| Level | Usage |
+|-------|-------|
+| `DEBUG` | User lookup, pagination, validation details (dev profile) |
+| `INFO` | Home access, profile access, resource create/delete, user seeding |
+| `WARN` | Not-found and duplicate-resource exceptions |
+| `ERROR` | Unexpected exceptions in `GlobalExceptionHandler` |
+
+**Log file location:** `logs/app.log` (project root, relative to working directory)
+
+**Rotation:** Daily files at `logs/app.yyyy-MM-dd.log`, 30-day retention, 100 MB total cap (`logback-spring.xml`).
+
+**Profile-driven levels:** `DEBUG` for `com.cinema` in `dev`, `WARN` in `prod`.
 
 ---
 
@@ -146,9 +253,11 @@ Enabled via `@EnableMethodSecurity` in `SecurityConfig`.
 
 Use **Swagger** (`/swagger-ui.html`) → **Authorize** with the credentials shown in each step.
 
-> **Important:** A movie requires an existing **director** (`directorId` is mandatory). **Actors** are optional (`actorIds`). Create directors and actors **before** creating a movie.
+> **Important:** A movie requires an existing **director** (`directorId` is mandatory). **Actors** are optional (`actorIds`).
+>
+> In the **`dev` profile**, sample data (director, actor, movie "Inception") is seeded automatically — you can skip Setup A/B and jump to security checks. For a clean database or `prod`, create directors and actors first.
 
-### Setup (do this first)
+### Setup (do this first — optional in dev)
 
 **Step A — Create a director (ADMIN only)**  
 Authorize as `admin` / `admin123`, then `POST /api/directors`:
