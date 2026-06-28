@@ -2,13 +2,12 @@ package com.cinema.service.impl;
 
 import com.cinema.config.AppSettings;
 import com.cinema.dto.request.MovieRequest;
-import com.cinema.dto.response.ActorResponse;
 import com.cinema.dto.response.MovieResponse;
 import com.cinema.entity.Actor;
 import com.cinema.entity.Director;
 import com.cinema.entity.Movie;
 import com.cinema.exception.ResourceNotFoundException;
-import com.cinema.mapper.ActorMapper;
+import com.cinema.mapper.MovieMapper;
 import com.cinema.repository.ActorRepository;
 import com.cinema.repository.DirectorRepository;
 import com.cinema.repository.MovieRepository;
@@ -56,7 +55,7 @@ public class MovieServiceImpl implements MovieService {
         Movie saved = movieRepository.save(movie);
         meterRegistry.counter("cinema.movies.created").increment();
         log.info("Movie created: id={}, title={}", saved.getId(), saved.getTitle());
-        return mapToResponse(saved);
+        return MovieMapper.toResponse(saved);
     }
 
     @Override
@@ -67,7 +66,7 @@ public class MovieServiceImpl implements MovieService {
         return movieRepository.findAllWithDetails()
                 .stream()
                 .limit(limit)
-                .map(this::mapToResponse)
+                .map(MovieMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
@@ -76,7 +75,7 @@ public class MovieServiceImpl implements MovieService {
     public MovieResponse getMovieById(Long id) {
         Movie movie = movieRepository.findWithDetailsById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("error.movie.notFound", id));
-        return mapToResponse(movie);
+        return MovieMapper.toResponse(movie);
     }
 
     @Override
@@ -87,7 +86,7 @@ public class MovieServiceImpl implements MovieService {
         }
         return movieRepository.findByDirectorId(directorId)
                 .stream()
-                .map(this::mapToResponse)
+                .map(MovieMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
@@ -96,7 +95,7 @@ public class MovieServiceImpl implements MovieService {
     public List<MovieResponse> getMoviesByGenre(String genre) {
         return movieRepository.findByGenreIgnoreCase(genre)
                 .stream()
-                .map(this::mapToResponse)
+                .map(MovieMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
@@ -116,7 +115,7 @@ public class MovieServiceImpl implements MovieService {
         movie.setDirector(director);
         movie.setActors(resolveActors(request.getActorIds()));
 
-        return mapToResponse(movieRepository.save(movie));
+        return MovieMapper.toResponse(movieRepository.save(movie));
     }
 
     @Override
@@ -137,24 +136,5 @@ public class MovieServiceImpl implements MovieService {
                 .map(actorId -> actorRepository.findById(actorId)
                         .orElseThrow(() -> new ResourceNotFoundException("error.actor.notFound", actorId)))
                 .collect(Collectors.toList());
-    }
-
-    private MovieResponse mapToResponse(Movie movie) {
-        List<ActorResponse> actorResponses = movie.getActors() == null ? new ArrayList<>() :
-                movie.getActors().stream()
-                        .map(ActorMapper::toResponse)
-                        .collect(Collectors.toList());
-
-        return MovieResponse.builder()
-                .id(movie.getId())
-                .title(movie.getTitle())
-                .releaseYear(movie.getReleaseYear())
-                .genre(movie.getGenre())
-                .rating(movie.getRating())
-                .directorId(movie.getDirector().getId())
-                .directorFirstName(movie.getDirector().getFirstName())
-                .directorLastName(movie.getDirector().getLastName())
-                .actors(actorResponses)
-                .build();
     }
 }
