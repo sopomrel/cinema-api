@@ -1,0 +1,26 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:cinemadb}
+    driver-class-name: org.postgresql.Driver
+    username: ${DB_USERNAME:cinema_user}
+    password: ${DB_PASSWORD:cinema_pass}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+  h2:
+    console:
+      enabled: false
+
+app:
+  settings:
+    title: Cinema API (Production)
+    contact-email: cinema-api@example.com
+    pagination-limit: 50
+    external-service-url: https://api.themoviedb.org/3
+    catalog-public-enabled: false
+
+logging:
+  level:
+    root: WARN
+    com.cinema: WARN

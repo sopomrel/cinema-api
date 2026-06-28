@@ -1,0 +1,25 @@
+spring:
+  profiles:
+    active: dev
+  messages:
+    basename: messages
+    encoding: UTF-8
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
+info:
+  app:
+    name: Cinema API (Test)
+    version: 0.0.1-SNAPSHOT
+
+app:
+  settings:
+    title: Cinema API (Test)
+    contact-email: test-cinema@example.com
+    pagination-limit: 20
+    external-service-url: https://api.themoviedb.org/3
+    catalog-public-enabled: true
